@@ -1,0 +1,35 @@
+{
+  "language": "Solidity",
+  "sources": {
+    "contracts/Twitter.sol": {
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.9;\n\ncontract Twitter {\n    struct Tweet {\n        uint256 id;\n        address author;\n        string content;\n        uint256 createdAt;\n    }\n    struct Message {\n        uint256 id;\n        string content;\n        address from;\n        address to;\n        uint256 createdAt;\n    }\n    mapping(uint256 => Tweet) private tweets;\n    mapping(address => uint256[]) private tweetsOf;\n    mapping(address => address[]) private following;\n    mapping(uint256 => Message[]) private conversations;\n    mapping(address => mapping(address => bool)) private operators;\n    uint256 private nextTweetId;\n    uint256 private nextMessageId;\n\n    event TweetSent(\n        uint256 id,\n        address indexed author,\n        string content,\n        uint256 createdAt\n    );\n\n    event MessageSent(\n        uint256 id,\n        string content,\n        address from,\n        address to,\n        uint256 createdAt\n    );\n\n    function tweet(string calldata _content) external {\n        _tweet(msg.sender, _content);\n    }\n\n    function tweetFrom(address _from, string calldata _content)\n        external\n        canOperate(msg.sender)\n    {\n        _tweet(_from, _content);\n    }\n\n    function sendMessage(string calldata _content, address _to) external {\n        _sendMessage(_content, msg.sender, _to);\n    }\n\n    function sendMessageFrom(\n        string calldata _content,\n        address _from,\n        address _to\n    ) external canOperate(msg.sender) {\n        _sendMessage(_content, _from, _to);\n    }\n\n    function follow(address _followed) external {\n        following[msg.sender].push(_followed);\n    }\n\n    function getLatestTweets(uint256 count)\n        external\n        view\n        returns (Tweet[] memory)\n    {\n        require(\n            count > 0 && count <= nextTweetId,\n            \"too few or too many tweets to return\"\n        );\n        Tweet[] memory _tweets = new Tweet[](count);\n        for (uint256 i = nextTweetId - count; i < nextTweetId; i++) {\n            Tweet storage _tweet = tweets[i];\n            _tweets[i] = Tweet(\n                _tweet.id,\n                _tweet.author,\n                _tweet.content,\n                _tweet.createdAt\n            );\n        }\n        return _tweets;\n    }\n\n    function getTweetOf(address _user, uint256 count)\n        external\n        view\n        returns (Tweet[] memory)\n    {\n        uint256[] storage tweetIds = tweetsOf[_user];\n        require(\n            count > 0 && count <= tweetIds.length,\n            \"too few or too many tweets to return\"\n        );\n        Tweet[] memory _tweets = new Tweet[](count);\n        for (uint256 i = tweetIds.length - count; i < nextTweetId; i++) {\n            Tweet storage _tweet = tweets[i];\n            _tweets[i] = Tweet(\n                _tweet.id,\n                _tweet.author,\n                _tweet.content,\n                _tweet.createdAt\n            );\n        }\n    }\n\n    function _tweet(address _from, string memory _content) internal {\n        tweets[nextTweetId] = Tweet(\n            nextTweetId,\n            _from,\n            _content,\n            block.timestamp\n        );\n        tweetsOf[_from].push(nextTweetId);\n        emit TweetSent(nextTweetId, _from, _content, block.timestamp);\n        nextTweetId++;\n    }\n\n    function _sendMessage(\n        string memory _content,\n        address _from,\n        address _to\n    ) internal {\n        uint256 conversationId = nextMessageId;\n        conversations[conversationId].push(\n            Message(nextMessageId, _content, _from, _to, block.timestamp)\n        );\n        emit MessageSent(nextMessageId, _content, _from, _to, block.timestamp);\n        nextMessageId++;\n    }\n\n    modifier canOperate(address _from) {\n        require(\n            operators[_from][msg.sender] == true,\n            \"operators not authorized\"\n        );\n        _;\n    }\n}\n"
+    }
+  },
+  "settings": {
+    "optimizer": {
+      "enabled": false,
+      "runs": 200
+    },
+    "outputSelection": {
+      "*": {
+        "*": [
+          "abi",
+          "evm.bytecode",
+          "evm.deployedBytecode",
+          "evm.methodIdentifiers",
+          "metadata",
+          "devdoc",
+          "userdoc",
+          "storageLayout",
+          "evm.gasEstimates"
+        ],
+        "": [
+          "ast"
+        ]
+      }
+    },
+    "metadata": {
+      "useLiteralContent": true
+    }
+  }
+}
